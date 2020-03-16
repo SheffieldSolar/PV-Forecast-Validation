@@ -41,6 +41,8 @@ def validate_pv_forecast():
         with open(cache_file, "rb") as fid:
             pvf_data = pickle.load(fid)
     # data = vlad_code(pvf_data)
+    start = pvf_data.fbase.astype(np.datetime64).min()
+    end = pvf_data.fbase.astype(np.datetime64).max()
     ##### USE TEST DATA UNTIL VLAD's CODE IS IMPLEMENTED #####
     import json
     with open("data.json", "r") as fid:
@@ -64,4 +66,5 @@ def validate_pv_forecast():
                         [i, j, val]
                     )
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    return render_template("validation_report.html", data=data["data"]["Region0"], report_timestamp=now)
+    return render_template("validation_report.html", data=data["data"]["Region0"],
+                           report_timestamp=now, start=start, end=end)

@@ -2,7 +2,8 @@
 {% set activepage = "Home" %}
 {% block content %}
     <h1>PV forecast validation stats</h1>
-    <h2>Generated: {{ report_timestamp }}</h2>
+    <h2>Report generated on: {{ report_timestamp }}</h2>
+    <h2>Using forecast data from {{ start }} to {{ end }}</h2>
     <ul>
         <li><a href="#intraday">Intra-day</a></li>
         <li><a href="#day1">Day + 1</a></li>
@@ -10,14 +11,15 @@
     <hr/>
     {% for type in data %}
         <div id="{{type}}">
-            <div class="row align-items-center justify-content-center">
-                <div class="col text-center"><h2>{{ type|upper }}</h2></div>
-            </div>
+            <!-- <div class="row align-items-center justify-content-center"> -->
+                <!-- <div class="col text-center"><h2>{{ type|upper }}</h2></div> -->
+            <!-- </div> -->
             <div class="container">
                 {% for fbase in data[type] %}
                     <div class="row">
                         <div class="col-lg-2">
-                            <h3>{{ fbase }}</h3>
+                            <h3>Horizon: <strong><em>{{ type|upper }}</em></strong></h3>
+                            <h3>Forecast Base: <strong><em>{{ fbase }}</em></strong></h3>
                         </div>
                         <div class="col-lg-5">
                             <figure class="highcharts-figure">
@@ -37,7 +39,8 @@
                 {% for fbase in data[type] %}
                     <div class="row">
                         <div class="col-lg-2">
-                            <h3>{{ fbase }}</h3>
+                            <h3>Horizon: <strong><em>{{ type|upper }}</em></strong></h3>
+                            <h3>Forecast Base: <strong><em>{{ fbase }}</em></strong></h3>
                         </div>
                         <div class="col-lg-5">
                             <figure class="highcharts-figure">
