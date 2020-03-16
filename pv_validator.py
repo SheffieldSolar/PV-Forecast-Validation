@@ -9,6 +9,7 @@ A Flask UI to validate a PV forecast against PV_Live.
 
 import os
 import pickle
+from datetime import datetime
 from flask import Flask, request, url_for, redirect
 from flask.templating import render_template
 import pandas as pd
@@ -62,4 +63,5 @@ def validate_pv_forecast():
                     data["data"]["Region0"][type][fbase]["heatmap"]["heatmap_xyz"].append(
                         [i, j, val]
                     )
-    return render_template("validation_report.html", data=data["data"]["Region0"])
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    return render_template("validation_report.html", data=data["data"]["Region0"], report_timestamp=now)

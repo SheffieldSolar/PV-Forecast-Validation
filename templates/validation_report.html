@@ -2,7 +2,7 @@
 {% set activepage = "Home" %}
 {% block content %}
     <h1>PV forecast validation stats</h1>
-    <h2>Generated: <span id="reportTimestamp"></span></h2>
+    <h2>Generated: {{ report_timestamp }}</h2>
     <ul>
         <li><a href="#intraday">Intra-day</a></li>
         <li><a href="#day1">Day + 1</a></li>
