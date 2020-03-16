@@ -9,11 +9,11 @@ The code is designed to be run inside a [Docker container](https://hub.docker.co
 ## How do I get set up?
 
 * Install Docker on your machine: https://docs.docker.com/install/
-* Clone this repository to your machine.
+* [Optionally, clone this repository to your machine]
 
 ## How do I get started?
 
-In the terminal/command-prompt, change directory (`cd <path-to-directory>`) into the location of this Git repo, then run the following command:
+In your local terminal/command-prompt, run the following command:
 
 `docker run -it --rm -p 5000:5000 sheffieldsolar/pv_forecast_validation:latest`
 
