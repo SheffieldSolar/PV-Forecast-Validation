@@ -62,8 +62,8 @@ class Validation:
         day_values = (gen.values.flatten()/cap.values.flatten()) > min_yield
         df = forecast[day_values]
         df.columns = ['forecast']
-        df['actual'] = gen[day_values]
-        df['cap'] = cap[day_values]
+        df = df.assign(actual=gen[day_values])
+        df = df.assign(cap=cap[day_values])
         return df
 
     @staticmethod

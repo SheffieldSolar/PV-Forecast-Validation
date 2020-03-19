@@ -18,9 +18,9 @@ body{
 
 @media print{
     .col-lg-2 {
-        width: 16.66%;
+        width: 16%;
     }
     .col-lg-5 {
-        width: 41.66%;
+        width: 42%;
     }
 }
