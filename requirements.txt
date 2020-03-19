@@ -1,5 +1,4 @@
 flask
 pandas>=1.0.0
 numpy
-sklearn
 git+git://github.com/SheffieldSolar/PV_Live-API

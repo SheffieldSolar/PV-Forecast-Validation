@@ -14,7 +14,7 @@ from flask import Flask, request, url_for, redirect
 from flask.templating import render_template
 import pandas as pd
 import numpy as np
-
+from validation import Validation
 
 ROOT_PATH = os.path.dirname(os.path.realpath(__file__))
 UPLOAD_FOLDER = os.path.join(ROOT_PATH, "uploads")
@@ -31,8 +31,9 @@ def validate_pv_forecast():
     cache_dir = os.path.join(ROOT_PATH, "cache")
     cache_file = os.path.join(cache_dir, "data.p")
     if request.method == "POST" and "dataFile" in request.files:
-        pvf_data = pd.read_csv(request.files["dataFile"].stream, names=["fbase", "horizon",
-                                                                        "generation_mw"])
+        pvf_data = pd.read_csv(request.files["dataFile"].stream,
+                               names=["fbase", "horizon", "generation_mw"],
+                               index_col=['fbase', 'horizon'], parse_dates=['fbase'])
         if not os.path.isdir(cache_dir):
             os.mkdir(cache_dir)
         with open(cache_file, "wb") as fid:
@@ -41,13 +42,13 @@ def validate_pv_forecast():
         with open(cache_file, "rb") as fid:
             pvf_data = pickle.load(fid)
     # data = vlad_code(pvf_data)
-    start = pvf_data.fbase.astype(np.datetime64).min()
-    end = pvf_data.fbase.astype(np.datetime64).max()
-    ##### USE TEST DATA UNTIL VLAD's CODE IS IMPLEMENTED #####
-    import json
-    with open("data.json", "r") as fid:
-        data = json.load(fid)
-    ##########################################################
+    dates = pvf_data.index.get_level_values(0)
+    start = dates.min()
+    end = dates.max()
+    
+    validation = Validation(options={'forecast_file': 'results/forecast.p'})
+    data = validation.run_validation(forecast=pvf_data)
+    
     for type in data["data"]["Region0"]:
         for fbase in data["data"]["Region0"][type]:
             this = data["data"]["Region0"][type][fbase]
