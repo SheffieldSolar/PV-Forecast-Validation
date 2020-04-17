@@ -25,42 +25,43 @@ class Validation:
 
     def run_validation(self, region, forecast=None, min_yield=0.05):
         region_str = f'Region {region}'
-		data = self.get_data(forecast, min_yield, region)
+        data = self.get_data(forecast, min_yield)
+        
+        horizons = data.index.get_level_values(1)
+        dt = data.index.get_level_values(0)
+        
+        display_data = dict()
+        display_data[region_str] = dict()
+        display_data[region_str]['intraday'] = dict()
+        display_data[region_str]['day1'] = dict()
+        
+        for base in dt.hour.unique():
+            
+            base_str = str(time(hour=base))[:5]
 
-		horizons = data.index.get_level_values(1)
-		dt = data.index.get_level_values(0)
+            intraday = data[(dt.hour == base) & (horizons.isin(np.arange(0, 48 - base)))]
+            dayp1 = data[(dt.hour == base) & (horizons.isin(np.arange(48 - (base * 2), 96 - (base * 2))))]
 
-		display_data = dict()
-		display_data[region_str] = dict()
-		display_data[region_str]['intraday'] = dict()
-		display_data[region_str]['day1'] = dict()
+            preiod_names = ['intraday', 'day1']
+            for i, period_data in enumerate([intraday, dayp1]):
 
-		for base in dt.hour.unique():
-			base_str = str(time(hour=base))[:5]
+                display_data[region_str][preiod_names[i]][base_str] = dict()
+                display_period = display_data[region_str][preiod_names[i]][base_str]
 
-			intraday = data[(dt.hour == base) & (horizons.isin(np.arange(0, 48 - base)))]
-			dayp1 = data[(dt.hour == base) & (horizons.isin(np.arange(48 - (base * 2), 96 - (base * 2))))]
+                pred, actual, cap = period_data['forecast'], period_data['actual'], period_data['cap']
+                pred_u, actual_u, cap_u = pred.unstack(), actual.unstack(), cap.unstack()
 
-			preiod_names = ['intraday', 'day1']
-			for i, period_data in enumerate([intraday, dayp1]):
+                errors = pd.DataFrame(index=pred_u.index)
+                errors['mape'] = self.wmape(pred_u, actual_u, cap_u, axis=1)
+                errors['r_squared'] = self.r_squared(pred, actual)
 
-				display_data[region_str][preiod_names[i]][base_str] = dict()
-				display_period = display_data[region_str][preiod_names[i]][base_str]
+                display_period['r_squared'] = errors['r_squared']
+                display_period['mape'] = errors['mape'].values.tolist()
+                display_period['actual'] = actual.values.tolist()
+                display_period['predicted'] = pred.values.tolist()
+                display_period['heatmap'] = self.calc_heatmap(pred, actual, cap)
 
-				pred, actual, cap = period_data['forecast'], period_data['actual'], period_data['cap']
-				pred_u, actual_u, cap_u = pred.unstack(), actual.unstack(), cap.unstack()
-
-				errors = pd.DataFrame(index=pred_u.index)
-				errors['mape'] = self.wmape(pred_u, actual_u, cap_u, axis=1)
-				errors['r_squared'] = self.r_squared(pred, actual)
-
-				display_period['r_squared'] = errors['r_squared']
-				display_period['mape'] = errors['mape'].values.tolist()
-				display_period['actual'] = actual.values.tolist()
-				display_period['predicted'] = pred.values.tolist()
-				display_period['heatmap'] = self.calc_heatmap(pred, actual, cap)
-
-		return display_data
+        return display_data
 
     def get_data(self, forecast, min_yield):
 
@@ -75,10 +76,10 @@ class Validation:
         day_values = (gen.values.flatten()/cap.values.flatten()) > min_yield
         df = forecast[day_values]
         if not isinstance(df, pd.DataFrame):
-			df = df.to_frame()
+            df = df.to_frame()
         df.columns = ['forecast']
         df.loc[:, 'actual'] = gen[day_values]
-		df.loc[:, 'cap'] = cap[day_values]
+        df.loc[:, 'cap'] = cap[day_values]
 
         return df
 
@@ -146,10 +147,10 @@ class Validation:
         .. [1] https://en.wikipedia.org/wiki/Coefficient_of_determination
         """
         mean_actual = np.mean(actuals)
-		ss_tot = np.sum(np.power(actuals - mean_actual, 2))
-		ss_res = np.sum(np.power(actuals - predictions, 2))
-		r_sqr = 1 - ss_res / ss_tot
-		return r_sqr
+        ss_tot = np.sum(np.power(actuals - mean_actual, 2))
+        ss_res = np.sum(np.power(actuals - predictions, 2))
+        r_sqr = 1 - ss_res / ss_tot
+        return r_sqr
 
     @staticmethod
     def wmape(predictions, actuals, norms=None, weights=None, axis=0):
