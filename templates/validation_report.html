@@ -89,62 +89,8 @@
     <script type="text/javascript">
         {% for type in data %}
             {% for fbase in data[type] %}
-                // R Squared histogram
-                Highcharts.chart("{{ type }}RSquaredHistogram{{ fbase }}", {
-                    title: {
-                        text: "R-squared"
-                    },
-                    xAxis: [{
-                        title: { text: "Data" },
-                        visible: false,
-                        min: 0,
-                        max: 1.1,
-                    }, {
-                        title: { text: "R-squared" },
-                        min: 0,
-                        max: 1.1,
-                    }],
-                    yAxis: [{
-                        title: { text: "Data" },
-                        visible: false
-                    }, {
-                        title: { text: "" },
-                    }],
-                    series: [{
-                        type: "histogram",
-                        xAxis: 1,
-                        yAxis: 1,
-                        baseSeries: "s1",
-                        zIndex: -1,
-                        showInLegend: false,
-                        binWidth: 0.05,
-                        enableMouseTracking: false,
-                        events: {
-                            afterAnimate: function() {
-                                var chart = this.chart;
-                                label_text = "Mean: " +
-                                             mean({{ data[type][fbase]["r_squared"] }}.filter(function(x){ return x >= 0 })).toPrecision(3) +
-                                             "<br/>" +
-                                             "Median: " +
-                                             median({{ data[type][fbase]["r_squared"] }}.filter(function(x){ return x >= 0 })).toPrecision(3)
-                                label = chart.renderer.text(label_text, 100, 90)
-                                    .css({
-                                        fontSize: '12px',
-                                        color: '#000000',
-                                        fontWeight: '900'
-                                    })
-                                .add();
-                            }
-                        }
-                    }, {
-                        name: "Data",
-                        type: "scatter",
-                        data: {{ data[type][fbase]["r_squared"] }}.filter(function(x){ return x >= 0 }),
-                        id: "s1",
-                        visible: false,
-                        showInLegend: false,
-                    }]
-                });
+                // General stats:
+
                 // MAPE histogram
                 Highcharts.chart("{{ type }}MAPEHistogram{{ fbase }}", {
                     title: {

@@ -7,91 +7,138 @@ Validate a PV forecast against PV_Live.
 - First Authored: 2020-03-13
 """
 
-import argparse
 from datetime import timedelta, time
 import pandas as pd
 import numpy as np
 
 from pvlive_api import PVLive
-from helper import shift_n_days, load_from_file, to_utc
+from helper import shift_n_days
+
 
 class Validation:
 
-    def __init__(self, options=None):
-        if options is None:
-            self.options = self.parse_options()
-        else:
-            self.options = options
+    def run_validation(self, regions, forecast, min_yield=0.05, val='full'):
+        """
+            Runs full validation for all regions
 
-    def run_validation(self, region, forecast=None, min_yield=0.05):
-        region_str = f'Region {region}'
-        data = self.get_data(forecast, min_yield)
-        
-        horizons = data.index.get_level_values(1)
-        dt = data.index.get_level_values(0)
-        
-        display_data = dict()
-        display_data[region_str] = dict()
-        display_data[region_str]['intraday'] = dict()
-        display_data[region_str]['day1'] = dict()
-        
-        for base in dt.hour.unique():
+            Parameters
+            ----------
+            regions: list
+                A list of region pes ids for which forecast data will be provided
+
+            forecast: pd.DataFrame, optional
+                Forecast data to be validated with index | Region | Datetime | Horizon |
             
-            base_str = str(time(hour=base))[:5]
+            min_yield: float
+                Cut out all the values with yield below min_yield
+            
+            val: {'full', 'fast'}
+                Perform either full validation or fast returning only one value
 
-            intraday = data[(dt.hour == base) & (horizons.isin(np.arange(0, 48 - base)))]
-            dayp1 = data[(dt.hour == base) & (horizons.isin(np.arange(48 - (base * 2), 96 - (base * 2))))]
+            Returns
+            -------
+            val_data: dict
+                Dictionary with all of the validation results ready for plotting
+        """
+    
+        val_data = {'data': {}}
+        display_data = val_data['data']
+        
+        for region in regions:
+            
+            region_str = f'Region{region}'
+            display_data[region_str] = dict()
+            val_data[region_str] = dict()
+            region_forecast = forecast.loc[region]
+            data = self.get_data(region_forecast, region, min_yield)
+            val_data[region_str]['wmape'] = self.wmape(data['forecast'], data['actual'], data['cap']).mean()
+            val_data[region_str]['r_squared'] = self.r_squared(data['forecast'], data['actual'])
+            
+            if val == 'full':
+                
+                display_data[region_str]['intraday'] = dict()
+                display_data[region_str]['day1'] = dict()
 
-            preiod_names = ['intraday', 'day1']
-            for i, period_data in enumerate([intraday, dayp1]):
+                horizons = data.index.get_level_values(1)
+                dt = data.index.get_level_values(0)
+                
+                for base in dt.hour.unique():
+                    
+                    base_str = str(time(hour=base))[:5]
+            
+                    intraday = data[(dt.hour == base) & (horizons.isin(np.arange(0, 48 - base)))]
+                    dayp1 = data[(dt.hour == base) & (horizons.isin(np.arange(48 - (base * 2), 96 - (base * 2))))]
+            
+                    period_names = ['intraday', 'day1']
+                    for i, period_data in enumerate([intraday, dayp1]):
+            
+                        display_data[region_str][period_names[i]][base_str] = dict()
+                        display_period = display_data[region_str][period_names[i]][base_str]
+            
+                        pred, actual, cap = period_data['forecast'], period_data['actual'], period_data['cap']
+                        pred_u, actual_u, cap_u = pred.unstack(), actual.unstack(), cap.unstack()
+            
+                        errors = pd.DataFrame(index=pred_u.index)
+                        errors['mape'] = self.wmape(pred_u, actual_u, cap_u, axis=1)
+                        errors['r_squared'] = self.r_squared(pred, actual)
+            
+                        display_period['r_squared'] = errors['r_squared']
+                        display_period['mape'] = errors['mape'].values.tolist()
+                        display_period['actual'] = actual.values.tolist()
+                        display_period['predicted'] = pred.values.tolist()
+                        display_period['heatmap'] = self.calc_heatmap(pred, actual, cap)
 
-                display_data[region_str][preiod_names[i]][base_str] = dict()
-                display_period = display_data[region_str][preiod_names[i]][base_str]
+        return val_data
 
-                pred, actual, cap = period_data['forecast'], period_data['actual'], period_data['cap']
-                pred_u, actual_u, cap_u = pred.unstack(), actual.unstack(), cap.unstack()
+    def get_data(self, forecast, region, min_yield):
+        """
+            Get pvlive data, fixes indexes to be same and keeps day values
 
-                errors = pd.DataFrame(index=pred_u.index)
-                errors['mape'] = self.wmape(pred_u, actual_u, cap_u, axis=1)
-                errors['r_squared'] = self.r_squared(pred, actual)
+            Parameters
+            ----------
+            forecast: pd.DataFrame
+                A Pandas DataFrame with index | DateTime | Horizon |
 
-                display_period['r_squared'] = errors['r_squared']
-                display_period['mape'] = errors['mape'].values.tolist()
-                display_period['actual'] = actual.values.tolist()
-                display_period['predicted'] = pred.values.tolist()
-                display_period['heatmap'] = self.calc_heatmap(pred, actual, cap)
+            region: int
+                Pes region for which the forecast has been produces
+            
+            min_yield: float
+                Cut out all the values with yield below provided
 
-        return display_data
+            Returns
+            -------
+            df: pd.DataFrame
+                DataFrame with actual and forecast data
+        """
 
-    def get_data(self, forecast, min_yield):
-
-        if forecast is None:
-            forecast = load_from_file(self.options['forecast_file'])[0]
-
-        gen, cap = self.get_pvlive_data(forecast.index)
+        gen, cap = self.get_pvlive_data(forecast.index, region)
         gen.dropna(inplace=True)
         forecast = forecast.reindex(gen.index).dropna()
         cap = cap.reindex(gen.index).dropna()
 
         day_values = (gen.values.flatten()/cap.values.flatten()) > min_yield
-        df = forecast[day_values]
+        df = forecast[day_values].copy()
         if not isinstance(df, pd.DataFrame):
             df = df.to_frame()
         df.columns = ['forecast']
-        df.loc[:, 'actual'] = gen[day_values]
-        df.loc[:, 'cap'] = cap[day_values]
+        df['actual'] = gen.loc[day_values]
+        df['cap'] = cap[day_values]
 
         return df
 
     @staticmethod
-    def get_pvlive_data(forecast_index):
+    def get_pvlive_data(forecast_index, region):
         """
             Extract pvlive data from api
 
             Parameters
             ----------
-            forecast_index
+            forecast_index: pd.MultiIndex
                 A Pandas index | DateTime | Horizon | from the forecast data
+            
+            region: int
+                Pes region to get the pv data from
+                
             Returns
             -------
             pv_data
@@ -104,18 +151,18 @@ class Validation:
         end = datetimes[-1] + timedelta(hours=73)
         pvlive = PVLive()
 
-        pvlive_data = pvlive.between(start, end, pes_id=0, extra_fields="installedcapacity_mwp")
+        pvlive_data = pvlive.between(start, end, pes_id=region, extra_fields="installedcapacity_mwp")
         pvlive_df = pd.DataFrame(pvlive_data, columns=['region_id', 'datetime', 'gen', 'cap'])
         pvlive_df.index = pd.to_datetime(pvlive_df['datetime'])
         pvlive_df.drop(columns=['datetime', 'region_id'], inplace=True)
 
         pv_gen = shift_n_days(pvlive_df['gen'].values.reshape(-1, 1), horizons[0], horizons[-1]+1, reverse=True)
-        pv_gen = pd.DataFrame(data=pv_gen,
-                              index=pd.to_datetime(pvlive_df.index)).drop(columns=0).stack().reindex(forecast_index)
+        pv_gen = pd.DataFrame(data=pv_gen, index=pd.to_datetime(pvlive_df.index))\
+            .drop(columns=0).stack().reindex(forecast_index)
 
         pv_cap = shift_n_days(pvlive_df['cap'].values.reshape(-1, 1), horizons[0], horizons[-1] + 1, reverse=True)
-        pv_cap = pd.DataFrame(data=pv_cap,
-                              index=pd.to_datetime(pvlive_df.index)).drop(columns=0).stack().reindex(forecast_index)
+        pv_cap = pd.DataFrame(data=pv_cap, index=pd.to_datetime(pvlive_df.index))\
+            .drop(columns=0).stack().reindex(forecast_index)
         return pv_gen, pv_cap
 
     @staticmethod
@@ -202,18 +249,3 @@ class Validation:
         heatmap['ylabels'] = heatmap_df.index.values.tolist()
         heatmap['values'] = heatmap_df.values.tolist()
         return heatmap
-
-    @staticmethod
-    def parse_options():
-        """Parse command line options."""
-        parser = argparse.ArgumentParser(description=("This is a command line interface (CLI) for "
-                                                      "the PV-Forecast_Validation module"),
-                                         epilog="Vlad Bondarenko 2020-03-13")
-        parser.add_argument("--report-directory", dest="report_dir", action="store", type=str,
-                            required=False, default="ValidationStatsReports",
-                            help="Optionally specify the directory into which reports are printed "
-                                 "(default is ./ValidationStatsReports/).")
-        parser.add_argument("-f", dest="forecast_file", action="store", required=False,
-                            help="Specify the pickl file from which to read forecast data")
-        options = parser.parse_args()
-        return options
