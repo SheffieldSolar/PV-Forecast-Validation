@@ -7,11 +7,12 @@
             <label for="dataFile">PV Forecast Data File</label>
             <input type="file" class="form-control-file" name="dataFile" id="dataFile">
             <small id="dataFileHelp" class="form-text text-muted">
-                A CSV file with three columns:
+                A CSV file with four columns (you must include column headers!):
                 <ul>
                     <li><var>forecast_base</var>: Formatted as <samp>yyyy-mm-dd HH:MM:SS</samp> <strong>UTC</strong></li>
                     <li><var>horizon</var>: Forecast horizon as integer number of half-hours i.e. if the <var>forecast_base</var> is 07:00 UTC then a <var>horizon</var> of 1 refers to the interval 07:00 - 07:30</li>
-                    <li><var>generation_mw</var>: Forecasted generation in MW</li>
+                    <li><var>region</var>: PES region ID</li>
+                    <li><var>generation</var>: Forecasted generation in MW</li>
                 </ul>
             </small>
         </div>
