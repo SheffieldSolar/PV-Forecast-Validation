@@ -35,6 +35,7 @@ def home_page():
 def validate_pv_forecast():
     cache_id = request.args.get("cache_id", None)
     fbase_selected = request.args.get("fbase", "07:00").split(",")
+    region_selected = request.args.get("region", "0").split(",")
     hm_min = request.args.get("hm_min", 0.)
     hm_max = request.args.get("hm_max", 15.)
     cache_dir = os.path.join(ROOT_PATH, "cache")
@@ -79,12 +80,15 @@ def validate_pv_forecast():
             now, start, end, fbase_available, data, input_filename = pickle.load(fid)
     data_ = copy.deepcopy(data["data"])
     for region in data["data"]:
+        # if region not in region_selected:
+            # data_.pop(region)
+            # continue
         for type_ in data["data"][region]:
             for fb in data["data"][region][type_]:
                 if fb not in fbase_selected:
                     data_[region][type_].pop(fb)
-    return render_template("validation_report.html", data=data_,
-                           report_timestamp=now, start=start, end=end, fbase_selected=fbase_selected,
+    return render_template("validation_report.html", data=data_, report_timestamp=now, start=start,
+                           end=end, fbase_selected=fbase_selected, region_selected=region_selected,
                            cache_id=cache_id, fbase_available=fbase_available, hm_min=hm_min,
                            hm_max=hm_max, input_filename=input_filename)
 
