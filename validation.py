@@ -49,7 +49,10 @@ class Validation:
             region_str = f'Region{region}'
             display_data[region_str] = dict()
             val_data[region_str] = dict()
-            region_forecast = forecast.loc[region]
+            try:
+                region_forecast = forecast.loc[region]
+            except KeyError:
+                region_forecast = forecast.loc[:, region]
             data = self.get_data(region_forecast, region, min_yield)
             val_data[region_str]['wmape'] = self.wmape(data['forecast'], data['actual'], data['cap']).mean()
             val_data[region_str]['r_squared'] = self.r_squared(data['forecast'], data['actual'])
@@ -197,7 +200,7 @@ class Validation:
         ss_tot = np.sum(np.power(actuals - mean_actual, 2))
         ss_res = np.sum(np.power(actuals - predictions, 2))
         r_sqr = 1 - ss_res / ss_tot
-        return r_sqr
+        return np.squeeze(r_sqr)
 
     @staticmethod
     def wmape(predictions, actuals, norms=None, weights=None, axis=0):

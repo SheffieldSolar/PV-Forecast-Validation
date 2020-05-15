@@ -86,12 +86,12 @@ def validate_pv_forecast():
                            cache_id=cache_id, fbase_available=fbase_available, hm_max=hm_max)
 
 
-def read_forecast(request, cache_dir):
+def read_forecast(req, cache_dir):
     
     data_cache_file = os.path.join(cache_dir, "data.p")
     
-    if request.method == "POST" and "dataFile" in request.files:
-        pvf_data = pd.read_csv(request.files["dataFile"].stream, names=['datetime', 'horizon', 'region', 'forecast'])
+    if req.method == "POST" and "dataFile" in req.files:
+        pvf_data = pd.read_csv(req.files["dataFile"].stream, names=['datetime', 'horizon', 'region', 'forecast'])
         pvf_data.dropna(thresh=3, inplace=True)
         if pvf_data['forecast'].isna().all():
             pvf_data['forecast'] = pvf_data['region']
