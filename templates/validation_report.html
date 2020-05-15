@@ -1,254 +1,266 @@
 {% extends "base.html" %}
 {% set activepage = "Home" %}
 {% block content %}
-    <h1>PV forecast validation stats</h1>
+    <h1>PV forecast validation stats: <strong><em>{{ input_filename }}</strong></em></h1>
     <h2>Report generated on: {{ report_timestamp }}</h2>
     <h2>Using forecast data from {{ start }} to {{ end }}</h2>
-    <ul>
+    <!-- <ul>
         <li><a href="#intraday">Intra-day</a></li>
         <li><a href="#day1">Day + 1</a></li>
-    </ul>
+    </ul> -->
     <div class="card">
         <div class="card-body">
-            <p>Select which forecast bases to display (N.B selecting too many might cause the app to slow down or crash)</p>
-            <div>
+            <div class="form-group">
                 {% for fbase in fbase_available %}
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="checkbox" id="fbase_select_{{ loop.index }}" name="fbase_select" value="{{ fbase }}"{% if fbase in fbase_selected %}checked{% endif %}>
                         <label class="form-check-label" for="fbase_select_{{ loop.index }}">{{ fbase }}</label>
                     </div>
                 {% endfor %}
+                <small id="fbaseHelp" class="form-text text-muted">Select which forecast bases to display (N.B selecting too many might cause the app to slow down or crash)</small>
+            </div>
+            <div class="form-group">
+                <label for="hm_min">Heatmap min value:</label>
+                <input class="form-control" type="number" id="hm_min" name="hm_min" min="0" max="25" value={{ hm_min }}>
+                <label for="hm_max">Heatmap max value:</label>
+                <input class="form-control" type="number" id="hm_max" name="hm_max" min="1" max="25" value={{ hm_max }}>
+                <small id="hmHelp" class="form-text text-muted">Set the min and max values for the colour bar on the heatmaps</small>
             </div>
             <button id="updateFbaseSelectionButton" class="btn btn-primary">Update</button>
         </div>
     </div>
     <hr/>
-    {% for type in data %}
-        <div id="{{type}}">
-            <!-- <div class="row align-items-center justify-content-center"> -->
-                <!-- <div class="col text-center"><h2>{{ type|upper }}</h2></div> -->
-            <!-- </div> -->
-            <div class="container">
-                {% for fbase in data[type] %}
-                    <div class="row">
-                        <div class="col-lg-2">
-                            <h3>Horizon: <strong><em>{{ type|upper }}</em></strong></h3>
-                            <h3>Forecast Base: <strong><em>{{ fbase }}</em></strong></h3>
+    {% for region in data %}
+        {% for type in data[region] %}
+            <div id="{{ region }}{{type}}">
+                <div class="container">
+                    {% for fbase in data[region][type] %}
+                        <div class="row">
+                            <div class="col-lg-2">
+                                <h3><strong><em>{{ region|upper }}</em></strong></h3>
+                                <h3>Horizon: <strong><em>{{ type|upper }}</em></strong></h3>
+                                <h3>Forecast Base: <strong><em>{{ fbase }}</em></strong></h3>
+                            </div>
+                            <div class="col-lg-5">
+                                <div id="{{ region }}{{ type }}OverviewStats{{ fbase }}">
+                                    <!-- <h4>R-squared: <em>{{ data[region][type][fbase]["r_squared"] }}</em></h4> -->
+                                    <h4>[This box coming soon!]</h4>
+                                </div>
+                            </div>
+                            <div class="col-lg-5">
+                                <figure class="highcharts-figure">
+                                    <div id="{{ region }}{{ type }}MAPEHistogram{{ fbase }}"></div>
+                                </figure>
+                            </div>
                         </div>
-                        <div class="col-lg-5">
-                            <figure class="highcharts-figure">
-                                <div id="{{ type }}RSquaredHistogram{{ fbase }}"></div>
-                            </figure>
+                        <hr/>
+                    {% endfor %}
+                </div>
+                <div class="container">
+                    {% for fbase in data[region][type] %}
+                        <div class="row">
+                            <div class="col-lg-2">
+                                <h3><strong><em>{{ region|upper }}</em></strong></h3>
+                                <h3>Horizon: <strong><em>{{ type|upper }}</em></strong></h3>
+                                <h3>Forecast Base: <strong><em>{{ fbase }}</em></strong></h3>
+                            </div>
+                            <div class="col-lg-5">
+                                <figure class="highcharts-figure">
+                                    <div id="{{ region }}{{ type }}PredictedVsActual{{ fbase }}"></div>
+                                </figure>
+                            </div>
+                            <div class="col-lg-5">
+                                <figure class="highcharts-figure">
+                                    <div id="{{ region }}{{ type }}Heatmap{{ fbase }}"></div>
+                                </figure>
+                            </div>
                         </div>
-                        <div class="col-lg-5">
-                            <figure class="highcharts-figure">
-                                <div id="{{ type }}MAPEHistogram{{ fbase }}"></div>
-                            </figure>
-                        </div>
-                    </div>
-                    <hr/>
-                {% endfor %}
+                        <hr/>
+                    {% endfor %}
+                </div>
             </div>
-            <div class="container">
-                {% for fbase in data[type] %}
-                    <div class="row">
-                        <div class="col-lg-2">
-                            <h3>Horizon: <strong><em>{{ type|upper }}</em></strong></h3>
-                            <h3>Forecast Base: <strong><em>{{ fbase }}</em></strong></h3>
-                        </div>
-                        <div class="col-lg-5">
-                            <figure class="highcharts-figure">
-                                <div id="{{ type }}PredictedVsActual{{ fbase }}"></div>
-                            </figure>
-                        </div>
-                        <div class="col-lg-5">
-                            <figure class="highcharts-figure">
-                                <div id="{{ type }}Heatmap{{ fbase }}"></div>
-                            </figure>
-                        </div>
-                    </div>
-                    <hr/>
-                {% endfor %}
-            </div>
-        </div>
-        <hr/>
+            <hr/>
+        {% endfor %}
     {% endfor %}
 {% endblock content %}
 
 {% block scripts %}
     {{super()}}
     <script type="text/javascript">
+        
         $("#updateFbaseSelectionButton").click(function() {
             var fbase_selected = [];
             $("input[name='fbase_select']:checked").each(function(i){
                 fbase_selected[i] = $(this).val();
             });
-            window.location.replace(window.location.pathname + "?cache_id={{ cache_id }}&fbase=" + fbase_selected.join(","));
+            var hm_min = $("#hm_min").val();
+            var hm_max = $("#hm_max").val();
+            window.location.replace(window.location.pathname + "?cache_id={{ cache_id }}&hm_min=" + hm_min + "&hm_max=" + hm_max + "&fbase=" + fbase_selected.join(","));
         });
     </script>
     <script type="text/javascript">
-        {% for type in data %}
-            {% for fbase in data[type] %}
-                // General stats:
-
-                // MAPE histogram
-                Highcharts.chart("{{ type }}MAPEHistogram{{ fbase }}", {
-                    title: {
-                        text: "MAPE"
-                    },
-                    xAxis: [{
-                        title: { text: "Data" },
-                        visible: false,
-                        min: 0,
-                        max: 20,
-                    }, {
-                        title: { text: "MAPE" },
-                        min: 0,
-                        max: 20,
-                    }],
-                    yAxis: [{
-                        title: { text: "Data" },
-                        visible: false
-                    }, {
-                        title: { text: "" },
-                    }],
-                    series: [{
-                        type: "histogram",
-                        xAxis: 1,
-                        yAxis: 1,
-                        baseSeries: "s1",
-                        zIndex: -1,
-                        showInLegend: false,
-                        binWidth: 1,
-                        enableMouseTracking: false,
-                        events: {
-                            afterAnimate: function() {
-                                var chart = this.chart;
-                                label_text = "Mean: " +
-                                             mean({{ data[type][fbase]["mape"] }}.filter(function(x){ return x >= 0 })).toPrecision(3) +
-                                             "<br/>" +
-                                             "Median: " +
-                                             median({{ data[type][fbase]["mape"] }}.filter(function(x){ return x >= 0 })).toPrecision(3)
-                                label = chart.renderer.text(label_text, 300, 90)
-                                    .css({
-                                        fontSize: '12px',
-                                        color: '#000000',
-                                        fontWeight: '900'
-                                    })
-                                .add();
-                            }
-                        }
-                    }, {
-                        name: "Data",
-                        type: "scatter",
-                        data: {{ data[type][fbase]["mape"] }},
-                        id: "s1",
-                        visible: false,
-                        showInLegend: false
-                    }]
-                });
-                // Predicted vs Actual
-                Highcharts.chart("{{ type }}PredictedVsActual{{ fbase }}", {
-                    title: {
-                        text: "Forecasted vs Actual (PV_Live)"
-                    },
-                    xAxis: [{
-                        title: { text: "PV_Live (MW)" }
-                    }],
-                    yAxis: [{
-                        title: { text: "Forecast (MW)" }
-                    }],
-                    series: [{
-                        type: "line",
-                        name: "Linear Fit",
-                        data: {{ data[type][fbase]["linear_fit"] }},
-                        marker: {
-                            enabled: false
+        {% for region in data %}
+            {% for type in data[region] %}
+                {% for fbase in data[region][type] %}
+                    // MAPE histogram
+                    Highcharts.chart("{{ region }}{{ type }}MAPEHistogram{{ fbase }}", {
+                        title: {
+                            text: "MAPE"
                         },
-                        states: {
-                            hover: {
-                                lineWidth: 0
+                        xAxis: [{
+                            title: { text: "Data" },
+                            visible: false,
+                            min: 0,
+                            max: 20,
+                        }, {
+                            title: { text: "MAPE" },
+                            min: 0,
+                            max: 20,
+                        }],
+                        yAxis: [{
+                            title: { text: "Data" },
+                            visible: false
+                        }, {
+                            title: { text: "" },
+                        }],
+                        series: [{
+                            type: "histogram",
+                            xAxis: 1,
+                            yAxis: 1,
+                            baseSeries: "s1",
+                            zIndex: -1,
+                            showInLegend: false,
+                            binWidth: 1,
+                            enableMouseTracking: false,
+                            events: {
+                                afterAnimate: function() {
+                                    var chart = this.chart;
+                                    label_text = "Mean: " +
+                                                 mean({{ data[region][type][fbase]["mape"] }}.filter(function(x){ return x >= 0 })).toPrecision(3) +
+                                                 "<br/>" +
+                                                 "Median: " +
+                                                 median({{ data[region][type][fbase]["mape"] }}.filter(function(x){ return x >= 0 })).toPrecision(3)
+                                    label = chart.renderer.text(label_text, 300, 90)
+                                        .css({
+                                            fontSize: '12px',
+                                            color: '#000000',
+                                            fontWeight: '900'
+                                        })
+                                    .add();
+                                }
                             }
+                        }, {
+                            name: "Data",
+                            type: "scatter",
+                            data: {{ data[region][type][fbase]["mape"] }},
+                            id: "s1",
+                            visible: false,
+                            showInLegend: false
+                        }]
+                    });
+                    // Predicted vs Actual
+                    Highcharts.chart("{{ region }}{{ type }}PredictedVsActual{{ fbase }}", {
+                        title: {
+                            text: "Forecasted vs Actual (PV_Live)"
                         },
-                        enableMouseTracking: false,
-                        zIndex: 2,
-                        
-                        events: {
-                            afterAnimate: function() {
-                                var chart = this.chart;
-                                var data = {{ data[type][fbase]["linear_fit"] }};
-                                var gradient = (data[1][1] - data[0][1]) / (data[1][0] - data[0][0])
-                                var intercept = data[0][1] - data[0][0] * gradient
-                                console.log(data)
-                                label_text = "Gradient: " +
-                                             gradient.toPrecision(3) +
-                                             "<br/>" +
-                                             "Intercept: " +
-                                             intercept.toPrecision(3)
-                                label = chart.renderer.text(label_text, 100, 90)
-                                    .css({
-                                        fontSize: '12px',
-                                        color: '#000000',
-                                        fontWeight: '900'
-                                    })
-                                .add();
+                        xAxis: [{
+                            title: { text: "PV_Live (MW)" }
+                        }],
+                        yAxis: [{
+                            title: { text: "Forecast (MW)" }
+                        }],
+                        series: [{
+                            type: "line",
+                            name: "Linear Fit",
+                            data: {{ data[region][type][fbase]["linear_fit"] }},
+                            marker: {
+                                enabled: false
+                            },
+                            states: {
+                                hover: {
+                                    lineWidth: 0
+                                }
+                            },
+                            enableMouseTracking: false,
+                            zIndex: 2,
+                            
+                            events: {
+                                afterAnimate: function() {
+                                    var chart = this.chart;
+                                    var data = {{ data[region][type][fbase]["linear_fit"] }};
+                                    var gradient = (data[1][1] - data[0][1]) / (data[1][0] - data[0][0])
+                                    var intercept = data[0][1] - data[0][0] * gradient
+                                    console.log(data)
+                                    label_text = "Gradient: " +
+                                                 gradient.toPrecision(3) +
+                                                 "<br/>" +
+                                                 "Intercept: " +
+                                                 intercept.toPrecision(3)
+                                    label = chart.renderer.text(label_text, 100, 90)
+                                        .css({
+                                            fontSize: '12px',
+                                            color: '#000000',
+                                            fontWeight: '900'
+                                        })
+                                    .add();
+                                }
                             }
-                        }
-                    }, {
-                        type: "scatter",
-                        name: "Data",
-                        data: {{ data[type][fbase]["predicted_vs_actual"] }},
-                        marker: {
-                            radius: 4
+                        }, {
+                            type: "scatter",
+                            name: "Data",
+                            data: {{ data[region][type][fbase]["predicted_vs_actual"] }},
+                            marker: {
+                                radius: 4
+                            },
+                            zIndex: 1
+                        }]
+                    });
+                    // MAPE heatmap
+                    Highcharts.chart("{{ region }}{{ type }}Heatmap{{ fbase }}", {
+                        chart: {
+                            type: "heatmap"
                         },
-                        zIndex: 1
-                    }]
-                });
-                // MAPE heatmap
-                Highcharts.chart("{{ type }}Heatmap{{ fbase }}", {
-                    chart: {
-                        type: "heatmap"
-                    },
-                    title: {
-                        text: "MAPE by month and time of day",
-                        align: "left"
-                    },
-                    xAxis: {
-                        title: { text: "Time of day (UTC)"},
-                        categories: {{ data[type][fbase]["heatmap"]["xlabels"]|tojson }}
-                    },
-                    yAxis: {
-                        title: { text: "Month"},
-                        categories: {{ data[type][fbase]["heatmap"]["ylabels"]|tojson }}
-                    },
-                    colorAxis: {
-                        stops: [
-                            //[0, "#3060cf"],
-                            //[0.5, "#fffbbc"],
-                            //[1, "#c4463a"]
-                            [0, '#0000FF'],
-                            [0.25, '#00FFFF'],
-                            [0.5, '#00FF00'],
-                            [0.75, '#FFFF00'],
-                            [0.9999, '#FF0000'],
-                            [1, '#000000']
-                        ],
-                        min: 0,
-                        max: {{ hm_max }}
-                    },
-                    series: [{
-                        borderWidth: 0,
-                        tooltip: {
-                            headerFormat: "MAPE (%)<br/>",
-                            pointFormatter: function() {
-                                time = this.series.xAxis.categories[this.x]
-                                mon = this.series.yAxis.categories[this.y]
-                                return mon + ", " + time + ": <b>" + this.value.toPrecision(3) + " %</b>"
-                            }
+                        title: {
+                            text: "MAPE by month and time of day",
+                            align: "left"
                         },
-                        data: {{ data[type][fbase]["heatmap"]["heatmap_xyz"] }}
-                    }]
-                });
+                        xAxis: {
+                            title: { text: "Time of day (UTC)"},
+                            categories: {{ data[region][type][fbase]["heatmap"]["xlabels"]|tojson }}
+                        },
+                        yAxis: {
+                            title: { text: "Month"},
+                            categories: {{ data[region][type][fbase]["heatmap"]["ylabels"]|tojson }}
+                        },
+                        colorAxis: {
+                            stops: [
+                                //[0, "#3060cf"],
+                                //[0.5, "#fffbbc"],
+                                //[1, "#c4463a"]
+                                [0, '#0000FF'],
+                                [0.25, '#00FFFF'],
+                                [0.5, '#00FF00'],
+                                [0.75, '#FFFF00'],
+                                [0.9999, '#FF0000'],
+                                [1, '#000000']
+                            ],
+                            min: 0,
+                            max: {{ hm_max }}
+                        },
+                        series: [{
+                            borderWidth: 0,
+                            tooltip: {
+                                headerFormat: "MAPE (%)<br/>",
+                                pointFormatter: function() {
+                                    time = this.series.xAxis.categories[this.x]
+                                    mon = this.series.yAxis.categories[this.y]
+                                    return mon + ", " + time + ": <b>" + this.value.toPrecision(3) + " %</b>"
+                                }
+                            },
+                            data: {{ data[region][type][fbase]["heatmap"]["heatmap_xyz"] }}
+                        }]
+                    });
+                {% endfor %}
             {% endfor %}
         {% endfor %}
     </script>
