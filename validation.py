@@ -14,9 +14,7 @@ import numpy as np
 from pvlive_api import PVLive
 from helper import shift_n_days
 
-
 class Validation:
-
     def run_validation(self, regions, forecast, min_yield=0.05, val='full'):
         """
             Runs full validation for all regions
@@ -40,12 +38,9 @@ class Validation:
             val_data: dict
                 Dictionary with all of the validation results ready for plotting
         """
-
         val_data = {'data': {}}
         display_data = val_data['data']
-
         for region in regions:
-
             region_str = f'Region{region}'
             display_data[region_str] = dict()
             val_data[region_str] = dict()
@@ -56,42 +51,30 @@ class Validation:
             data = self.get_data(region_forecast, region, min_yield)
             val_data[region_str]['wmape'] = self.wmape(data['forecast'], data['actual'], data['cap']).mean()
             val_data[region_str]['r_squared'] = self.r_squared(data['forecast'], data['actual'])
-
             if val == 'full':
-                
                 display_data[region_str]['intraday'] = dict()
                 display_data[region_str]['day1'] = dict()
-
                 horizons = data.index.get_level_values(1)
                 dt = data.index.get_level_values(0)
-                
                 for base in dt.hour.unique():
-                    
                     base_str = str(time(hour=base))[:5]
-
                     intraday = data[(dt.hour == base) & (horizons.isin(np.arange(0, 48 - base)))]
                     dayp1 = data[(dt.hour == base) & (horizons.isin(np.arange(48 - (base * 2), 96 - (base * 2))))]
-
                     period_names = ['intraday', 'day1']
                     for i, period_data in enumerate([intraday, dayp1]):
-
                         display_data[region_str][period_names[i]][base_str] = dict()
                         display_period = display_data[region_str][period_names[i]][base_str]
-
                         pred, actual, cap = period_data['forecast'], period_data['actual'], period_data['cap']
                         pred_u, actual_u, cap_u = pred.unstack(), actual.unstack(), cap.unstack()
-
                         errors = pd.DataFrame(index=pred_u.index)
                         errors['mape'] = self.wmape(pred_u, actual_u, cap_u, axis=1)
                         errors['r_squared'] = self.r_squared(pred, actual)
-
-                        display_period['r_squared'] = errors['r_squared']
-
+                        display_period['r_squared'] = self.r_squared(pred.reset_index().forecast,
+                                                                     actual.reset_index().actual)
                         display_period['mape'] = errors['mape'].values.tolist()
                         display_period['actual'] = actual.values.tolist()
                         display_period['predicted'] = pred.values.tolist()
                         display_period['heatmap'] = self.calc_heatmap(pred, actual, cap)
-
         return val_data
 
     def get_data(self, forecast, region, min_yield):
@@ -114,12 +97,10 @@ class Validation:
             df: pd.DataFrame
                 DataFrame with actual and forecast data
         """
-
         gen, cap = self.get_pvlive_data(forecast.index, region)
         gen.dropna(inplace=True)
         forecast = forecast.reindex(gen.index).dropna()
         cap = cap.reindex(gen.index).dropna()
-
         day_values = (gen.values.flatten()/cap.values.flatten()) > min_yield
         df = forecast[day_values].copy()
         if not isinstance(df, pd.DataFrame):
@@ -127,7 +108,6 @@ class Validation:
         df.columns = ['forecast']
         df['actual'] = gen.loc[day_values]
         df['cap'] = cap[day_values]
-
         return df
 
     @staticmethod
@@ -147,26 +127,21 @@ class Validation:
             -------
             pv_data
         """
-
         datetimes = forecast_index.get_level_values(0).unique()
         horizons = forecast_index.get_level_values(1).unique()
-
         start = datetimes[0]
         end = datetimes[-1] + timedelta(hours=73)
         pvlive = PVLive()
-
         pvlive_data = pvlive.between(start, end, pes_id=region, extra_fields="installedcapacity_mwp")
         pvlive_df = pd.DataFrame(pvlive_data, columns=['region_id', 'datetime', 'gen', 'cap'])
         pvlive_df.index = pd.to_datetime(pvlive_df['datetime'])
         pvlive_df.drop(columns=['datetime', 'region_id'], inplace=True)
-
         pv_gen = shift_n_days(pvlive_df['gen'].values.reshape(-1, 1), horizons[0], horizons[-1]+1, reverse=True)
         pv_gen = pd.DataFrame(data=pv_gen, index=pd.to_datetime(pvlive_df.index))\
-            .drop(columns=0).stack().reindex(forecast_index)
-
+                    .drop(columns=0).stack().reindex(forecast_index)
         pv_cap = shift_n_days(pvlive_df['cap'].values.reshape(-1, 1), horizons[0], horizons[-1] + 1, reverse=True)
         pv_cap = pd.DataFrame(data=pv_cap, index=pd.to_datetime(pvlive_df.index))\
-            .drop(columns=0).stack().reindex(forecast_index)
+                    .drop(columns=0).stack().reindex(forecast_index)
         return pv_gen, pv_cap
 
     @staticmethod

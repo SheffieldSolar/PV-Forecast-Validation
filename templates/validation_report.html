@@ -2,84 +2,90 @@
 {% set activepage = "Home" %}
 {% block content %}
     <h1>PV forecast validation stats: <strong><em>{{ input_filename }}</strong></em></h1>
-    <h2>Report generated on: {{ report_timestamp }}</h2>
-    <h2>Using forecast data from {{ start }} to {{ end }}</h2>
+    <h2>Report generated on: <strong><em>{{ report_timestamp }}</strong></em></h2>
+    <h2>Using forecast data from <strong><em>{{ start }}</strong></em> to <strong><em>{{ end }}</strong></em></h2>
+    <h2>Featuring the following forecast base times: {% for fbase in fbase_selected %}<strong><em>{{ fbase }}</strong></em>{% if loop.index < fbase_selected|length %}, {% endif %}{% endfor %}</h2>
     <!-- <ul>
         <li><a href="#intraday">Intra-day</a></li>
         <li><a href="#day1">Day + 1</a></li>
     </ul> -->
-    <div class="card">
-        <div class="card-body">
-            <div class="form-group">
-                {% for fbase in fbase_available %}
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="fbase_select_{{ loop.index }}" name="fbase_select" value="{{ fbase }}"{% if fbase in fbase_selected %}checked{% endif %}>
-                        <label class="form-check-label" for="fbase_select_{{ loop.index }}">{{ fbase }}</label>
-                    </div>
-                {% endfor %}
-                <small id="fbaseHelp" class="form-text text-muted">Select which forecast bases to display (N.B selecting too many might cause the app to slow down or crash)</small>
+    <div id="controlPanel" class="card mt-4">
+        <div class="card-header text-center" id="headingControls">
+            <h5 class="mb-0">
+                <a class="btn btn-link" id="collapseControlsButton" href="#headingControls" data-toggle="collapse" data-target="#collapseControls" aria-expanded="true" aria-controls="collapseControls">
+                    <strong>Show options</strong>
+                </a>
+            </h5>
+        </div>
+        <div id="collapseControls" class="collapse" aria-labelledby="headingControls">
+            <div class="card-body">
+                <div class="form-group">
+                    {% for fbase in fbase_available %}
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="fbase_select_{{ loop.index }}" name="fbase_select" value="{{ fbase }}"{% if fbase in fbase_selected %}checked{% endif %}>
+                            <label class="form-check-label" for="fbase_select_{{ loop.index }}">{{ fbase }}</label>
+                        </div>
+                    {% endfor %}
+                    <small id="fbaseHelp" class="form-text text-muted">Select which forecast bases to display (N.B selecting too many might cause the app to slow down or crash)</small>
+                </div>
+                <div class="form-group">
+                    <label for="hm_min">Heatmap min value:</label>
+                    <input class="form-control" type="number" id="hm_min" name="hm_min" min="0" max="25" value={{ hm_min }}>
+                    <label for="hm_max">Heatmap max value:</label>
+                    <input class="form-control" type="number" id="hm_max" name="hm_max" min="1" max="25" value={{ hm_max }}>
+                    <small id="hmHelp" class="form-text text-muted">Set the min and max values for the colour bar on the heatmaps</small>
+                </div>
+                <button id="updateFbaseSelectionButton" class="btn btn-primary">Update</button>
             </div>
-            <div class="form-group">
-                <label for="hm_min">Heatmap min value:</label>
-                <input class="form-control" type="number" id="hm_min" name="hm_min" min="0" max="25" value={{ hm_min }}>
-                <label for="hm_max">Heatmap max value:</label>
-                <input class="form-control" type="number" id="hm_max" name="hm_max" min="1" max="25" value={{ hm_max }}>
-                <small id="hmHelp" class="form-text text-muted">Set the min and max values for the colour bar on the heatmaps</small>
-            </div>
-            <button id="updateFbaseSelectionButton" class="btn btn-primary">Update</button>
         </div>
     </div>
-    <hr/>
+    <div class="w-100 mt-3 mb-3 text-center">
+        <button class="btn btn-primary" id="downloadPDF" onclick="window.print();return false;">Download as PDF</button>
+    </div>
     {% for region in data %}
         {% for type in data[region] %}
             <div id="{{ region }}{{type}}">
-                <div class="container">
+                <div class="container-fluid result-container">
                     {% for fbase in data[region][type] %}
-                        <div class="row">
-                            <div class="col-lg-2">
+                        <div class="row mt-3 mb-3"><div class="col-lg-12"><hr class="top"/></div></div>
+                        <div class="row resultset">
+                            <div class="col-lg-2 mt-3">
                                 <h3><strong><em>{{ region|upper }}</em></strong></h3>
                                 <h3>Horizon: <strong><em>{{ type|upper }}</em></strong></h3>
                                 <h3>Forecast Base: <strong><em>{{ fbase }}</em></strong></h3>
                             </div>
-                            <div class="col-lg-5">
-                                <div id="{{ region }}{{ type }}OverviewStats{{ fbase }}">
-                                    <!-- <h4>R-squared: <em>{{ data[region][type][fbase]["r_squared"] }}</em></h4> -->
-                                    <h4>[This box coming soon!]</h4>
+                            <div class="col-lg-10">
+                                <div class="row">
+                                    <div class="col-lg-4 d-flex align-items-center justify-content-center text-center">
+                                        <div id="{{ region }}{{ type }}OverviewStats{{ fbase }}">
+                                            <h2><u>Summary Stats</u></h2>
+                                            <h4>R-squared: <em>{{'%0.3f'|format(data[region][type][fbase]["r_squared"]|float) }}</em></h4>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-8">
+                                        <figure class="highcharts-figure">
+                                            <div id="{{ region }}{{ type }}MAPEHistogram{{ fbase }}"></div>
+                                        </figure>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-lg-6">
+                                        <figure class="highcharts-figure">
+                                            <div id="{{ region }}{{ type }}PredictedVsActual{{ fbase }}"></div>
+                                        </figure>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <figure class="highcharts-figure">
+                                            <div id="{{ region }}{{ type }}Heatmap{{ fbase }}"></div>
+                                        </figure>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-lg-5">
-                                <figure class="highcharts-figure">
-                                    <div id="{{ region }}{{ type }}MAPEHistogram{{ fbase }}"></div>
-                                </figure>
-                            </div>
                         </div>
-                        <hr/>
-                    {% endfor %}
-                </div>
-                <div class="container">
-                    {% for fbase in data[region][type] %}
-                        <div class="row">
-                            <div class="col-lg-2">
-                                <h3><strong><em>{{ region|upper }}</em></strong></h3>
-                                <h3>Horizon: <strong><em>{{ type|upper }}</em></strong></h3>
-                                <h3>Forecast Base: <strong><em>{{ fbase }}</em></strong></h3>
-                            </div>
-                            <div class="col-lg-5">
-                                <figure class="highcharts-figure">
-                                    <div id="{{ region }}{{ type }}PredictedVsActual{{ fbase }}"></div>
-                                </figure>
-                            </div>
-                            <div class="col-lg-5">
-                                <figure class="highcharts-figure">
-                                    <div id="{{ region }}{{ type }}Heatmap{{ fbase }}"></div>
-                                </figure>
-                            </div>
-                        </div>
-                        <hr/>
+                        <div class="row mt-3 mb-3"><div class="col-lg-12"><hr class="bottom"/></div></div>
                     {% endfor %}
                 </div>
             </div>
-            <hr/>
         {% endfor %}
     {% endfor %}
 {% endblock content %}
@@ -87,7 +93,14 @@
 {% block scripts %}
     {{super()}}
     <script type="text/javascript">
-        
+        $(document).ready(function( ) {
+            $("#collapseControls").on("hide.bs.collapse", function () {
+                $( "#collapseControlsButton" ).html('Show options <span class="glyphicon glyphicon-chevron-down pull-right"></span>');
+            });
+            $("#collapseControls").on("show.bs.collapse", function () {
+                $( "#collapseControlsButton" ).html('Hide options <span class="glyphicon glyphicon-chevron-up pull-right"></span>');
+            });
+        });
         $("#updateFbaseSelectionButton").click(function() {
             var fbase_selected = [];
             $("input[name='fbase_select']:checked").each(function(i){
@@ -97,15 +110,43 @@
             var hm_max = $("#hm_max").val();
             window.location.replace(window.location.pathname + "?cache_id={{ cache_id }}&hm_min=" + hm_min + "&hm_max=" + hm_max + "&fbase=" + fbase_selected.join(","));
         });
+        var mediaQueryList = window.matchMedia("print");
+        mediaQueryList.addListener(function(mql) {
+            if(mql.matches) {
+                for (var i=0; i<mapehist.length; i++) {
+                    mapehist[i].reflow();
+                    predvsactual[i].reflow();
+                    heatmaps[i].reflow();
+                };
+                $("#controlPanel").hide();
+                $("#downloadPDF").hide();
+            } else {
+                $("#controlPanel").show();
+                $("#downloadPDF").show();
+            }
+        });
     </script>
     <script type="text/javascript">
+        mapehist = []
+        predvsactual = []
+        heatmaps = []
+        var i = 0
         {% for region in data %}
             {% for type in data[region] %}
                 {% for fbase in data[region][type] %}
                     // MAPE histogram
-                    Highcharts.chart("{{ region }}{{ type }}MAPEHistogram{{ fbase }}", {
+                    mapehist[i] = Highcharts.chart("{{ region }}{{ type }}MAPEHistogram{{ fbase }}", {
                         title: {
-                            text: "MAPE"
+                            text: "MAPE",
+                            align: "center",
+                        },
+                        chart: {
+                            borderColor: "#d1d1d1",
+                            borderWidth: 1,
+                            borderRadius: 5,
+                        },
+                        credits: {
+                            enabled: false
                         },
                         xAxis: [{
                             title: { text: "Data" },
@@ -142,9 +183,9 @@
                                                  median({{ data[region][type][fbase]["mape"] }}.filter(function(x){ return x >= 0 })).toPrecision(3)
                                     label = chart.renderer.text(label_text, 300, 90)
                                         .css({
-                                            fontSize: '12px',
-                                            color: '#000000',
-                                            fontWeight: '900'
+                                            fontSize: "12px",
+                                            color: "#000000",
+                                            fontWeight: "900"
                                         })
                                     .add();
                                 }
@@ -159,15 +200,27 @@
                         }]
                     });
                     // Predicted vs Actual
-                    Highcharts.chart("{{ region }}{{ type }}PredictedVsActual{{ fbase }}", {
+                    predvsactual[i] = Highcharts.chart("{{ region }}{{ type }}PredictedVsActual{{ fbase }}", {
                         title: {
-                            text: "Forecasted vs Actual (PV_Live)"
+                            text: "Forecasted vs Actual (PV_Live)",
+                            align: "center",
+                        },
+                        chart: {
+                            borderColor: "#d1d1d1",
+                            borderWidth: 1,
+                            borderRadius: 5,
+                            height: "100%",
+                        },
+                        credits: {
+                            enabled: false
                         },
                         xAxis: [{
-                            title: { text: "PV_Live (MW)" }
+                            title: { text: "PV_Live (MW)" },
+                            gridLineWidth: 1,
                         }],
                         yAxis: [{
-                            title: { text: "Forecast (MW)" }
+                            title: { text: "Forecast (MW)" },
+                            gridLineWidth: 1,
                         }],
                         series: [{
                             type: "line",
@@ -183,14 +236,12 @@
                             },
                             enableMouseTracking: false,
                             zIndex: 2,
-                            
                             events: {
                                 afterAnimate: function() {
                                     var chart = this.chart;
                                     var data = {{ data[region][type][fbase]["linear_fit"] }};
                                     var gradient = (data[1][1] - data[0][1]) / (data[1][0] - data[0][0])
                                     var intercept = data[0][1] - data[0][0] * gradient
-                                    console.log(data)
                                     label_text = "Gradient: " +
                                                  gradient.toPrecision(3) +
                                                  "<br/>" +
@@ -198,9 +249,9 @@
                                                  intercept.toPrecision(3)
                                     label = chart.renderer.text(label_text, 100, 90)
                                         .css({
-                                            fontSize: '12px',
-                                            color: '#000000',
-                                            fontWeight: '900'
+                                            fontSize: "12px",
+                                            color: "#000000",
+                                            fontWeight: "900"
                                         })
                                     .add();
                                 }
@@ -216,13 +267,20 @@
                         }]
                     });
                     // MAPE heatmap
-                    Highcharts.chart("{{ region }}{{ type }}Heatmap{{ fbase }}", {
+                    heatmaps[i] = Highcharts.chart("{{ region }}{{ type }}Heatmap{{ fbase }}", {
                         chart: {
-                            type: "heatmap"
+                            type: "heatmap",
+                            borderColor: "#d1d1d1",
+                            borderWidth: 1,
+                            borderRadius: 5,
+                            height: "100%",
                         },
                         title: {
                             text: "MAPE by month and time of day",
-                            align: "left"
+                            align: "center",
+                        },
+                        credits: {
+                            enabled: false
                         },
                         xAxis: {
                             title: { text: "Time of day (UTC)"},
@@ -237,12 +295,12 @@
                                 //[0, "#3060cf"],
                                 //[0.5, "#fffbbc"],
                                 //[1, "#c4463a"]
-                                [0, '#0000FF'],
-                                [0.25, '#00FFFF'],
-                                [0.5, '#00FF00'],
-                                [0.75, '#FFFF00'],
-                                [0.9999, '#FF0000'],
-                                [1, '#000000']
+                                [0, "#0000FF"],
+                                [0.25, "#00FFFF"],
+                                [0.5, "#00FF00"],
+                                [0.75, "#FFFF00"],
+                                [0.9999, "#FF0000"],
+                                [1, "#000000"]
                             ],
                             min: 0,
                             max: {{ hm_max }}
@@ -260,6 +318,7 @@
                             data: {{ data[region][type][fbase]["heatmap"]["heatmap_xyz"] }}
                         }]
                     });
+                    i++;
                 {% endfor %}
             {% endfor %}
         {% endfor %}

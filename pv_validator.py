@@ -34,10 +34,10 @@ def home_page():
 @APP.route("/validate_pv_forecast", methods=["GET", "POST"])
 def validate_pv_forecast():
     cache_id = request.args.get("cache_id", None)
-    fbase_selected = request.args.get("fbase", "07:00").split(",")
+    fbase_selected = request.args.get("fbase", "07:00,10:00").split(",")
     region_selected = request.args.get("region", "0").split(",")
     hm_min = request.args.get("hm_min", 0.)
-    hm_max = request.args.get("hm_max", 15.)
+    hm_max = request.args.get("hm_max", 10.)
     cache_dir = os.path.join(ROOT_PATH, "cache")
     if cache_id is None:
         now_ = datetime.utcnow()
@@ -90,7 +90,8 @@ def validate_pv_forecast():
     return render_template("validation_report.html", data=data_, report_timestamp=now, start=start,
                            end=end, fbase_selected=fbase_selected, region_selected=region_selected,
                            cache_id=cache_id, fbase_available=fbase_available, hm_min=hm_min,
-                           hm_max=hm_max, input_filename=input_filename)
+                           hm_max=hm_max, input_filename=input_filename, now=TIME.time())
+
 
 def read_forecast(request, cache_dir, cache_id):
     data_cache_file = os.path.join(cache_dir, f"data_{cache_id}.p")
