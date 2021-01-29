@@ -4,14 +4,22 @@
     <h1>Sheffield Solar PV forecast validation tool</h1>
     <form action="{{url_for('validate_pv_forecast')}}" method="post" id="dataFileUploadForm" enctype="multipart/form-data">
         <div class="form-group">
-            <label for="dataFile">PV Forecast Data File</label>
-            <input type="file" class="form-control-file" name="dataFile" id="dataFile">
-            <small id="dataFileHelp" class="form-text text-muted">
+            <label for="entityTypeSelect">Select an aggregation entity type:</label>
+            <select name="entityType" class="form-control ml-5" id="entityTypeSelect">
+                <option value="national">National</option>
+                <option value="pes">PES / DNO License Areas / GSP Group Regions</option>
+                <option value="gsp">GSP</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="dataFile">PV Forecast Data File:</label>
+            <input type="file" class="form-control-file ml-5" name="dataFile" id="dataFile">
+            <small id="dataFileHelp" class="form-text text-muted  ml-5">
                 A CSV file with four columns (you must include column headers!):
                 <ul>
                     <li><var>forecast_base</var>: Formatted as <samp>yyyy-mm-dd HH:MM:SS</samp> <strong>UTC</strong></li>
                     <li><var>horizon</var>: Forecast horizon as integer number of half-hours i.e. if the <var>forecast_base</var> is 07:00 UTC then a <var>horizon</var> of 1 refers to the interval 07:00 - 07:30</li>
-                    <li><var>region</var>: PES region ID</li>
+                    <li><var>entity_id</var>: ID for the aggregation entity (PES or GSP as per selection above)</li>
                     <li><var>generation</var>: Forecasted generation in MW</li>
                 </ul>
             </small>

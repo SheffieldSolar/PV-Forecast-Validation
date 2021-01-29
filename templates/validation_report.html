@@ -4,6 +4,7 @@
     <h1>PV forecast validation stats: <strong><em>{{ input_filename }}</strong></em></h1>
     <h2>Report generated on: <strong><em>{{ report_timestamp }}</strong></em></h2>
     <h2>Using forecast data from <strong><em>{{ start }}</strong></em> to <strong><em>{{ end }}</strong></em></h2>
+    <h2>Featuring the following {{ entity_type|upper }} IDs: {% for entity_id in entity_ids %}<strong><em>{{ entity_id }}</strong></em>{% if loop.index < entity_ids|length %}, {% endif %}{% endfor %}</h2>
     <h2>Featuring the following forecast base times: {% for fbase in fbase_selected %}<strong><em>{{ fbase }}</strong></em>{% if loop.index < fbase_selected|length %}, {% endif %}{% endfor %}</h2>
     <!-- <ul>
         <li><a href="#intraday">Intra-day</a></li>
@@ -42,41 +43,41 @@
     <div class="w-100 mt-3 mb-3 text-center">
         <button class="btn btn-primary" id="downloadPDF" onclick="window.print();return false;">Download as PDF</button>
     </div>
-    {% for region in data %}
-        {% for type in data[region] %}
-            <div id="{{ region }}{{type}}">
+    {% for entity_id in data %}
+        {% for type in data[entity_id] %}
+            <div id="{{ entity_id }}{{type}}">
                 <div class="container-fluid result-container">
-                    {% for fbase in data[region][type] %}
+                    {% for fbase in data[entity_id][type] %}
                         <div class="row mt-3 mb-3"><div class="col-lg-12"><hr class="top"/></div></div>
                         <div class="row resultset">
                             <div class="col-lg-2 mt-3">
-                                <h3><strong><em>{{ region|upper }}</em></strong></h3>
+                                <h3><strong><em>{{ entity_id|upper }}</em></strong></h3>
                                 <h3>Horizon: <strong><em>{{ type|upper }}</em></strong></h3>
                                 <h3>Forecast Base: <strong><em>{{ fbase }}</em></strong></h3>
                             </div>
                             <div class="col-lg-10">
                                 <div class="row">
                                     <div class="col-lg-4 d-flex align-items-center justify-content-center text-center">
-                                        <div id="{{ region }}{{ type }}OverviewStats{{ fbase }}">
+                                        <div id="{{ entity_id }}{{ type }}OverviewStats{{ fbase }}">
                                             <h2><u>Summary Stats</u></h2>
-                                            <h4>R-squared: <em>{{'%0.3f'|format(data[region][type][fbase]["r_squared"]|float) }}</em></h4>
+                                            <h4>R-squared: <em>{{'%0.3f'|format(data[entity_id][type][fbase]["r_squared"]|float) }}</em></h4>
                                         </div>
                                     </div>
                                     <div class="col-lg-8">
                                         <figure class="highcharts-figure">
-                                            <div id="{{ region }}{{ type }}MAPEHistogram{{ fbase }}"></div>
+                                            <div id="{{ entity_id }}{{ type }}MAPEHistogram{{ fbase }}"></div>
                                         </figure>
                                     </div>
                                 </div>
                                 <div class="row">
                                     <div class="col-lg-6">
                                         <figure class="highcharts-figure">
-                                            <div id="{{ region }}{{ type }}PredictedVsActual{{ fbase }}"></div>
+                                            <div id="{{ entity_id }}{{ type }}PredictedVsActual{{ fbase }}"></div>
                                         </figure>
                                     </div>
                                     <div class="col-lg-6">
                                         <figure class="highcharts-figure">
-                                            <div id="{{ region }}{{ type }}Heatmap{{ fbase }}"></div>
+                                            <div id="{{ entity_id }}{{ type }}Heatmap{{ fbase }}"></div>
                                         </figure>
                                     </div>
                                 </div>
@@ -131,11 +132,11 @@
         predvsactual = []
         heatmaps = []
         var i = 0
-        {% for region in data %}
-            {% for type in data[region] %}
-                {% for fbase in data[region][type] %}
+        {% for entity_id in data %}
+            {% for type in data[entity_id] %}
+                {% for fbase in data[entity_id][type] %}
                     // MAPE histogram
-                    mapehist[i] = Highcharts.chart("{{ region }}{{ type }}MAPEHistogram{{ fbase }}", {
+                    mapehist[i] = Highcharts.chart("{{ entity_id }}{{ type }}MAPEHistogram{{ fbase }}", {
                         title: {
                             text: "MAPE",
                             align: "center",
@@ -177,10 +178,10 @@
                                 afterAnimate: function() {
                                     var chart = this.chart;
                                     label_text = "Mean: " +
-                                                 mean({{ data[region][type][fbase]["mape"] }}.filter(function(x){ return x >= 0 })).toPrecision(3) +
+                                                 mean({{ data[entity_id][type][fbase]["mape"] }}.filter(function(x){ return x >= 0 })).toPrecision(3) +
                                                  "<br/>" +
                                                  "Median: " +
-                                                 median({{ data[region][type][fbase]["mape"] }}.filter(function(x){ return x >= 0 })).toPrecision(3)
+                                                 median({{ data[entity_id][type][fbase]["mape"] }}.filter(function(x){ return x >= 0 })).toPrecision(3)
                                     label = chart.renderer.text(label_text, 300, 90)
                                         .css({
                                             fontSize: "12px",
@@ -193,14 +194,14 @@
                         }, {
                             name: "Data",
                             type: "scatter",
-                            data: {{ data[region][type][fbase]["mape"] }},
+                            data: {{ data[entity_id][type][fbase]["mape"] }},
                             id: "s1",
                             visible: false,
                             showInLegend: false
                         }]
                     });
                     // Predicted vs Actual
-                    predvsactual[i] = Highcharts.chart("{{ region }}{{ type }}PredictedVsActual{{ fbase }}", {
+                    predvsactual[i] = Highcharts.chart("{{ entity_id }}{{ type }}PredictedVsActual{{ fbase }}", {
                         title: {
                             text: "Forecasted vs Actual (PV_Live)",
                             align: "center",
@@ -225,7 +226,7 @@
                         series: [{
                             type: "line",
                             name: "Linear Fit",
-                            data: {{ data[region][type][fbase]["linear_fit"] }},
+                            data: {{ data[entity_id][type][fbase]["linear_fit"] }},
                             marker: {
                                 enabled: false
                             },
@@ -239,7 +240,7 @@
                             events: {
                                 afterAnimate: function() {
                                     var chart = this.chart;
-                                    var data = {{ data[region][type][fbase]["linear_fit"] }};
+                                    var data = {{ data[entity_id][type][fbase]["linear_fit"] }};
                                     var gradient = (data[1][1] - data[0][1]) / (data[1][0] - data[0][0])
                                     var intercept = data[0][1] - data[0][0] * gradient
                                     label_text = "Gradient: " +
@@ -259,7 +260,7 @@
                         }, {
                             type: "scatter",
                             name: "Data",
-                            data: {{ data[region][type][fbase]["predicted_vs_actual"] }},
+                            data: {{ data[entity_id][type][fbase]["predicted_vs_actual"] }},
                             marker: {
                                 radius: 4
                             },
@@ -267,7 +268,7 @@
                         }]
                     });
                     // MAPE heatmap
-                    heatmaps[i] = Highcharts.chart("{{ region }}{{ type }}Heatmap{{ fbase }}", {
+                    heatmaps[i] = Highcharts.chart("{{ entity_id }}{{ type }}Heatmap{{ fbase }}", {
                         chart: {
                             type: "heatmap",
                             borderColor: "#d1d1d1",
@@ -284,11 +285,11 @@
                         },
                         xAxis: {
                             title: { text: "Time of day (UTC)"},
-                            categories: {{ data[region][type][fbase]["heatmap"]["xlabels"]|tojson }}
+                            categories: {{ data[entity_id][type][fbase]["heatmap"]["xlabels"]|tojson }}
                         },
                         yAxis: {
                             title: { text: "Month"},
-                            categories: {{ data[region][type][fbase]["heatmap"]["ylabels"]|tojson }}
+                            categories: {{ data[entity_id][type][fbase]["heatmap"]["ylabels"]|tojson }}
                         },
                         colorAxis: {
                             stops: [
@@ -315,7 +316,7 @@
                                     return mon + ", " + time + ": <b>" + this.value.toPrecision(3) + " %</b>"
                                 }
                             },
-                            data: {{ data[region][type][fbase]["heatmap"]["heatmap_xyz"] }}
+                            data: {{ data[entity_id][type][fbase]["heatmap"]["heatmap_xyz"] }}
                         }]
                     });
                     i++;
