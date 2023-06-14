@@ -8,13 +8,20 @@ Validate a PV forecast against PV_Live.
 """
 
 from datetime import timedelta, time
+
 import pandas as pd
 import numpy as np
-
 from pvlive_api import PVLive
+
 from helper import shift_n_days
 
 class Validation:
+    def __init__(self, logger):
+        self.logger = logger
+        self.pvlive = PVLive()
+        self.pes_list = self.pvlive._get_pes_list()
+        self.gsp_list = self.pvlive._get_gsp_list().merge(self.pes_list, how="left", on=("pes_id"))
+
     def run_validation(self, entity_type, entity_ids, forecast, min_yield=0.05, val="full"):
         """
             Runs full validation for all entity_ids
@@ -41,13 +48,10 @@ class Validation:
             val_data: dict
                 Dictionary with all of the validation results ready for plotting
         """
-        self.pvlive = PVLive()
         val_data = {"data": {}}
         display_data = val_data["data"]
-        entity_col = "pes_id" if entity_type == "pes" else "gsp_id"
-        entity_name_col = "pes_name" if entity_type == "pes" else "gsp_name"
         for entity_id in entity_ids:
-            entity_name = self.pvlive.ggd_lookup[self.pvlive.ggd_lookup[entity_col] == entity_id][entity_name_col].iloc[0]
+            entity_name = self.__get_entity_name(entity_type, entity_id)
             entity_id_str = f"{entity_type.upper()} {entity_id} ({entity_name})"
             display_data[entity_id_str] = dict()
             val_data[entity_id_str] = dict()
@@ -83,6 +87,18 @@ class Validation:
                         display_period["predicted"] = pred.values.tolist()
                         display_period["heatmap"] = self.calc_heatmap(pred, actual, cap)
         return val_data
+
+    def __get_entity_name(self, entity_type, entity_id):
+        """Get the name of a given entity."""
+        self.logger.debug("Getting entity name for %s %s", entity_type, entity_id)
+        if entity_type.lower() in ("national", "pes"):
+            return self.pes_list.query(f"`pes_id`=={entity_id}").pes_name.values[0]
+        elif entity_type.lower() == "gsp":
+            return gsp_list.query(f"`gsp_id`=={entity_id}")\
+                           .apply(lambda x: f"{x.gsp_name} ({x.pes_name})", axis=1)\
+                           .values[0]
+        else:
+            raise ValueError("entity_type must be 'national', 'pes' or 'gsp'")
 
     def get_data(self, forecast, entity_type, entity_id, min_yield):
         """
@@ -143,19 +159,20 @@ class Validation:
         horizons = forecast_index.get_level_values(1).unique()
         start = datetimes[0]
         end = datetimes[-1] + timedelta(hours=73)
-        print(f"Fetching PV_Live data: {start}, {end}, {entity_type}, {entity_id}")
-        pvlive_data = self.pvlive.between(start, end, entity_type=entity_type, entity_id=entity_id,
+        self.logger.debug(f"Fetching PV_Live data: {start}, {end}, {entity_type}, {entity_id}")
+        entity_type_ = "pes" if entity_type == "national" else entity_type
+        pvlive_data = self.pvlive.between(start, end, entity_type=entity_type_, entity_id=entity_id,
                                           extra_fields="installedcapacity_mwp", dataframe=True)
-        pvlive_data.sort_values(by=[f"{entity_type}_id", "datetime_gmt"], inplace=True)
+        pvlive_data.sort_values(by=[f"{entity_type_}_id", "datetime_gmt"], inplace=True)
         pvlive_df = pvlive_data.rename(columns={"generation_mw": "gen", "installedcapacity_mwp": "cap"})
         pvlive_df.index = pd.to_datetime(pvlive_df["datetime_gmt"])
-        pvlive_df.drop(columns=["datetime_gmt", f"{entity_type}_id"], inplace=True)
+        pvlive_df.drop(columns=["datetime_gmt", f"{entity_type_}_id"], inplace=True)
         pv_gen = shift_n_days(pvlive_df["gen"].values.reshape(-1, 1), horizons[0], horizons[-1]+1, reverse=True)
         pv_gen = pd.DataFrame(data=pv_gen, index=pd.to_datetime(pvlive_df.index))\
-                    .drop(columns=0).stack().reindex(forecast_index)
+                   .drop(columns=0).stack().reindex(forecast_index)
         pv_cap = shift_n_days(pvlive_df["cap"].values.reshape(-1, 1), horizons[0], horizons[-1] + 1, reverse=True)
         pv_cap = pd.DataFrame(data=pv_cap, index=pd.to_datetime(pvlive_df.index))\
-                    .drop(columns=0).stack().reindex(forecast_index)
+                   .drop(columns=0).stack().reindex(forecast_index)
         return pv_gen, pv_cap
 
     @staticmethod

@@ -13,6 +13,8 @@ from io import StringIO
 from datetime import datetime
 import time as TIME
 import copy
+import logging
+
 from flask import Flask, request, url_for, redirect
 from flask.templating import render_template
 import pandas as pd
@@ -25,7 +27,8 @@ UPLOAD_FOLDER = os.path.join(ROOT_PATH, "uploads")
 
 APP = Flask(__name__)
 APP.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-
+# APP.logger.setLevel(logging.DEBUG)
+APP.logger.setLevel(logging.WARNING)
 
 @APP.route("/", methods=["GET", "POST"])
 def home_page():
@@ -34,6 +37,7 @@ def home_page():
 
 @APP.route("/validate_pv_forecast", methods=["GET", "POST"])
 def validate_pv_forecast():
+    """Load a CSV file of aggregate PV forecast data and validate against PV_Live."""
     cache_id = request.args.get("cache_id", None)
     fbase_selected = request.args.get("fbase", "07:00,10:00").split(",")
     hm_min = request.args.get("hm_min", 0.)
@@ -47,7 +51,7 @@ def validate_pv_forecast():
         pvf_data, forecast_bases, entity_type, entity_ids = read_forecast(request, cache_dir, cache_id)
         start = forecast_bases.min()
         end = forecast_bases.max()
-        validation = Validation()
+        validation = Validation(logger=APP.logger)
         data = validation.run_validation(entity_type, entity_ids, forecast=pvf_data)
         fbase_available = []
         for entity_id in data["data"]:

@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.11
 WORKDIR /pv_forecast_validation
 
 COPY requirements.txt /pv_forecast_validation/requirements.txt
