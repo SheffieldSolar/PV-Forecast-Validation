@@ -2,4 +2,4 @@ flask
 pandas>=1.0.0
 numpy
 matplotlib
-git+git://github.com/SheffieldSolar/PV_Live-API
+pvlive-api
