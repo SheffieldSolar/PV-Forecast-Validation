@@ -22,7 +22,7 @@ class Validation:
         self.pes_list = self.pvlive._get_pes_list()
         self.gsp_list = self.pvlive._get_gsp_list().merge(self.pes_list, how="left", on=("pes_id"))
 
-    def run_validation(self, entity_type, entity_ids, forecast, min_yield=0.05, val="full"):
+    def run_validation(self, entity_type, entity_ids, forecast, min_yield=0.01, val="full"):
         """
             Runs full validation for all entity_ids
 
